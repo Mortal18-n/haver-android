@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId "ai.osinet.haver"
-        minSdk 21
+        minSdk 24
         targetSdk 33
         versionCode 1
         versionName "1.0"
@@ -31,9 +31,17 @@ android {
         }
         release {
             minifyEnabled false
-            // Sign release with the same debug keystore so CI APKs are installable via ADB
             signingConfig signingConfigs.debug
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    splits {
+        abi {
+            enable       true
+            reset()
+            include      'arm64-v8a'
+            universalApk true
         }
     }
 

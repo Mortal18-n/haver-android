@@ -1,29 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <!-- Audio / microphone -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-
-    <!-- Camera -->
     <uses-permission android:name="android.permission.CAMERA" />
-
-    <!-- Kiosk / always-on -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-
-    <!-- Device admin (Device Owner kiosk) -->
-    <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN" />
-
-    <uses-feature android:name="android.hardware.camera"     android:required="false" />
-    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <application
         android:allowBackup="false"
@@ -33,7 +14,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Haver"
         android:hardwareAccelerated="true"
-        android:usesCleartextTraffic="false">
+        android:usesCleartextTraffic="false"
+        android:extractNativeLibs="true"
+        android:requestLegacyExternalStorage="true">
 
         <activity
             android:name=".MainActivity"
@@ -52,7 +35,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Auto-start on boot -->
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"
@@ -64,7 +46,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- Device Admin for full kiosk (requires: adb shell dpm set-device-owner ai.osinet.haver/.HaverDeviceAdminReceiver) -->
         <receiver
             android:name=".HaverDeviceAdminReceiver"
             android:exported="true"
