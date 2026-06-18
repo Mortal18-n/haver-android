@@ -22,9 +22,23 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: Create debug keystore
+        # The CI runner has no pre-existing ~/.android/debug.keystore.
+        # Generate one with the standard Android debug credentials.
+        run: |
+          mkdir -p "$HOME/.android"
+          keytool -genkeypair \
+            -keystore "$HOME/.android/debug.keystore" \
+            -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US" \
+            -noprompt
+          echo "Keystore created: $(ls -lh $HOME/.android/debug.keystore)"
+
       - name: Generate Gradle Wrapper jar
-        # The wrapper jar is not committed (binary). Generate it from the Gradle distribution.
-        # Uses a minimal settings-only project so no plugins are resolved at this step.
+        # The wrapper jar is not committed (binary). Generate it from a minimal
+        # settings-only project so no Android plugin is involved at this step.
         run: |
           mkdir -p /tmp/wrapper-gen
           echo "rootProject.name = 'wrapper-gen'" > /tmp/wrapper-gen/settings.gradle
@@ -39,9 +53,8 @@ jobs:
           ls -lh gradle/wrapper/
 
       - name: Restore wrapper properties
-        # The 'gradle wrapper' task may have overwritten our properties file
         run: |
-          cat > gradle/wrapper/gradle-wrapper.properties <<'EOF'
+          cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
           distributionBase=GRADLE_USER_HOME
           distributionPath=wrapper/dists
           distributionUrl=https\://services.gradle.org/distributions/gradle-8.6-bin.zip
@@ -57,21 +70,36 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
 
+      - name: Build Release APK (debug-signed, installable via ADB)
+        run: ./gradlew assembleRelease --stacktrace
+
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: haver-digital-debug-${{ github.sha }}
+          name: haver-digital-debug-${{ github.run_number }}
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
           if-no-files-found: error
 
-      - name: Build Release APK (debug-signed)
-        run: ./gradlew assembleRelease --stacktrace
-
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: haver-digital-release-${{ github.sha }}
+          name: haver-digital-release-${{ github.run_number }}
           path: app/build/outputs/apk/release/*.apk
           retention-days: 30
           if-no-files-found: error
+
+      - name: Build summary
+        if: success()
+        run: |
+          echo "## Build #${{ github.run_number }} succeeded" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| APK | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|------|" >> $GITHUB_STEP_SUMMARY
+          for apk in app/build/outputs/apk/**/*.apk; do
+            size=$(du -h "$apk" | cut -f1)
+            name=$(basename "$apk")
+            echo "| $name | $size |" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download both APKs from the **Artifacts** section above." >> $GITHUB_STEP_SUMMARY

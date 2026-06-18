@@ -22,15 +22,21 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import org.json.JSONObject
+import java.net.URL
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private val kioskPin = "1234"
 
+    // Version file hosted in the repo — developer bumps version_code here to push update notices
+    private val versionCheckUrl =
+        "https://raw.githubusercontent.com/Mortal18-n/haver-android/main/android-version.json"
+
     private val permissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { /* WebChromeClient handles the actual grant inside WebView */ }
+    ) { /* WebChromeClient handles actual grant inside WebView */ }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,6 +51,7 @@ class MainActivity : AppCompatActivity() {
         hideSystemUI()
         requestNativePermissions()
         enterKioskMode()
+        checkForUpdates()
 
         webView.loadUrl("https://haver-digital.vercel.app")
     }
@@ -61,23 +68,19 @@ class MainActivity : AppCompatActivity() {
             loadWithOverviewMode = true
             cacheMode = WebSettings.LOAD_DEFAULT
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            // Identify as kiosk for server-side detection
-            userAgentString = "$userAgentString HaverKiosk/1.0"
+            userAgentString = "$userAgentString HaverKiosk/${BuildConfig.VERSION_NAME}"
         }
 
         webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(
-                view: WebView,
-                request: WebResourceRequest
-            ): Boolean {
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 // Keep all HTTPS navigation inside the WebView
                 return request.url.scheme != "https"
             }
         }
 
         webView.webChromeClient = object : WebChromeClient() {
-            // Auto-grant microphone + camera to the web page — this is the key fix
-            // for the echo loop: Android handles audio natively and passes it cleanly.
+            // Auto-grant microphone + camera — key fix for the echo loop:
+            // Android's native audio stack handles mic capture, not the browser sandbox.
             override fun onPermissionRequest(request: PermissionRequest) {
                 request.grant(request.resources)
             }
@@ -128,13 +131,44 @@ class MainActivity : AppCompatActivity() {
         val admin = ComponentName(this, HaverDeviceAdminReceiver::class.java)
         try {
             if (dpm.isDeviceOwnerApp(packageName)) {
-                // Full kiosk: no status bar, no nav buttons, no app switching
                 dpm.setLockTaskPackages(admin, arrayOf(packageName))
             }
             startLockTask()
         } catch (_: Exception) {
-            // Graceful fallback if lock task unavailable (e.g. emulator)
+            // Graceful fallback (emulator, non-kiosk device)
         }
+    }
+
+    // Check android-version.json in the GitHub repo. If the server version_code is higher
+    // than this build, show a native update notice so staff know to re-flash the tablet.
+    private fun checkForUpdates() {
+        val currentVersionCode = BuildConfig.VERSION_CODE
+        Thread {
+            try {
+                val json = URL(versionCheckUrl).openStream().bufferedReader().readText()
+                val obj = JSONObject(json)
+                val remoteVersionCode = obj.getInt("version_code")
+                val remoteVersionName = obj.optString("version_name", "")
+                if (remoteVersionCode > currentVersionCode) {
+                    runOnUiThread { showUpdateDialog(remoteVersionName) }
+                }
+            } catch (_: Exception) {
+                // Network unavailable or file missing — silently skip
+            }
+        }.start()
+    }
+
+    private fun showUpdateDialog(remoteVersion: String) {
+        val msg = if (remoteVersion.isNotEmpty())
+            "גרסה חדשה ($remoteVersion) זמינה. אנא פנה לתמיכה לעדכון האפליקציה."
+        else
+            "עדכון חדש לאפליקציה זמין. אנא פנה לתמיכה."
+        AlertDialog.Builder(this)
+            .setTitle("עדכון נדרש")
+            .setMessage(msg)
+            .setPositiveButton("הבנתי", null)
+            .setCancelable(false)
+            .show()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

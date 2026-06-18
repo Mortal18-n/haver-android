@@ -15,22 +15,14 @@ android {
         versionName "1.0"
     }
 
-    signingConfigs {
-        debug {
-            storeFile file("${System.getProperty('user.home')}/.android/debug.keystore")
-            storePassword "android"
-            keyAlias "androiddebugkey"
-            keyPassword "android"
-        }
-    }
-
     buildTypes {
         debug {
-            signingConfig signingConfigs.debug
             debuggable true
+            // AGP auto-creates ~/.android/debug.keystore; CI pre-generates it via keytool
         }
         release {
             minifyEnabled false
+            // Sign with the default debug keystore so CI-built APKs are installable via ADB
             signingConfig signingConfigs.debug
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -43,6 +35,10 @@ android {
 
     kotlinOptions {
         jvmTarget = '1.8'
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 }
 
