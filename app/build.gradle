@@ -9,20 +9,29 @@ android {
 
     defaultConfig {
         applicationId "ai.osinet.haver"
-        minSdk 26
+        minSdk 21
         targetSdk 34
         versionCode 1
         versionName "1.0"
     }
 
+    signingConfigs {
+        debug {
+            storeFile     file("${System.getProperty('user.home')}/.android/debug.keystore")
+            storePassword 'android'
+            keyAlias      'androiddebugkey'
+            keyPassword   'android'
+        }
+    }
+
     buildTypes {
         debug {
-            debuggable true
-            // AGP auto-creates ~/.android/debug.keystore; CI pre-generates it via keytool
+            debuggable    true
+            signingConfig signingConfigs.debug
         }
         release {
             minifyEnabled false
-            // Sign with the default debug keystore so CI-built APKs are installable via ADB
+            // Sign release with the same debug keystore so CI APKs are installable via ADB
             signingConfig signingConfigs.debug
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
