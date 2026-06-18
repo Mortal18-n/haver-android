@@ -22,8 +22,8 @@
     <!-- Device admin (Device Owner kiosk) -->
     <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN" />
 
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <uses-feature android:name="android.hardware.microphone" android:required="true" />
+    <uses-feature android:name="android.hardware.camera"     android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <application
         android:allowBackup="false"
